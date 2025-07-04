@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PMC 532 QUIZ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .option-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .correct {
+            background-color: #22c55e !important; /* Green-500 */
+            color: white !important;
+            transform: scale(1.05);
+        }
+        .incorrect {
+            background-color: #ef4444 !important; /* Red-500 */
+            color: white !important;
+        }
+        .disabled-options {
+            pointer-events: none;
+        }
+        .progress-bar-fill {
+            transition: width 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div id="quiz-container" class="w-full max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="text-center">
+            <h1 id="main-title" class="text-3xl md:text-4xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">PMC 532 QUIZ</h1>
+            <p id="main-description" class="text-lg text-gray-600 dark:text-gray-400 mb-8">Test your knowledge on advanced drug design and antibiotics. Now with 60 questions!</p>
+            <div id="countdown" class="hidden text-7xl font-bold text-indigo-500 my-8"></div>
+            <button id="start-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                Start Quiz
+            </button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="hidden">
+            <!-- Header with Stats -->
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Question</span>
+                    <span id="question-counter" class="font-bold text-lg text-indigo-600 dark:text-indigo-400">1/60</span>
+                </div>
+                <div class="flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-yellow-500"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m15.5 9.5-3 3-1.5 4.5 4.5-1.5 3-3L15.5 9.5z"></path></svg>
+                    <span id="score" class="font-bold text-lg">0</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-red-500"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span id="timer" class="font-bold text-lg">30</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-6">
+                <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full progress-bar-fill" style="width: 0%"></div>
+            </div>
+
+            <!-- Question -->
+            <div id="question-area" class="mb-6">
+                <p id="question-text" class="text-xl md:text-2xl font-semibold leading-relaxed"></p>
+            </div>
+
+            <!-- Options -->
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Options will be dynamically inserted here -->
+            </div>
+            
+            <button id="next-btn" class="hidden mt-6 w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg shadow-md transition-colors duration-300">
+                Next Question
+            </button>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="hidden text-center">
+            <h2 class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Quiz Complete!</h2>
+            <p class="text-lg mb-2">Your final score is:</p>
+            <p id="final-score" class="text-5xl font-extrabold text-yellow-500 mb-8">0</p>
+            <p id="feedback-message" class="text-lg text-gray-600 dark:text-gray-400 mb-8"></p>
+            <button id="restart-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg text-xl shadow-lg transform hover:scale-105 transition-transform duration-300">
+                Play Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const endScreen = document.getElementById('end-screen');
+
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        const mainTitle = document.getElementById('main-title');
+        const mainDescription = document.getElementById('main-description');
+        const countdownDisplay = document.getElementById('countdown');
+
+        const questionCounter = document.getElementById('question-counter');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const progressBar = document.getElementById('progress-bar');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+
+        const finalScoreDisplay = document.getElementById('final-score');
+        const feedbackMessage = document.getElementById('feedback-message');
+
+        // --- Quiz Data ---
+        const questions = [
+            // 60 Questions Array
+            { question: "A 45-year-old patient with severe renal dysfunction develops a life-threatening infection caused by KPC-producing Enterobacterales. The infection is located in the CNS where drug penetration is critical. Which therapeutic approach would be most appropriate?", options: ["Meropenem-vaborbactam at standard dosing because vaborbactam specifically targets KPC enzymes", "Ceftazidime-avibactam with dose adjustment for renal function because it has better CNS penetration than carbapenems", "Imipenem-cilastatin-relebactam because cilastatin protects against renal toxicity while relebactam inhibits KPC", "Combination of aztreonam-avibactam (off-label) because it avoids carbapenem-associated seizure risk in renal patients"], answer: "Combination of aztreonam-avibactam (off-label) because it avoids carbapenem-associated seizure risk in renal patients" },
+            { question: "A research team is developing a new beta-lactam for treating biofilm-associated infections. Which structural modifications would be most critical for success?", options: ["Incorporate a siderophore moiety and pair with a DBO inhibitor that maintains activity at low pH", "Add bulky side groups to resist AmpC and include a neighboring group participation mechanism for acid stability", "Design a prodrug with ester linkages and combine with clavulanic acid for broad-spectrum inhibition", "Create a zwitterionic structure with porins-targeting modifications and pair with sulbactam"], answer: "Incorporate a siderophore moiety and pair with a DBO inhibitor that maintains activity at low pH" },
+            { question: "During a hospital outbreak, you observe that patients treated with ampicillin-sulbactam show good initial response but develop resistance within 72 hours. What is the most likely explanation for the treatment failure?", options: ["Sulbactam is being degraded by AmpC; switch to meropenem-vaborbactam", "The organism is developing efflux mechanisms; use ceftazidime-avibactam", "KPC is hydrolyzing ampicillin faster than sulbactam can inhibit; use imipenem-cilastatin-relebactam", "The soft tissue environment is reducing drug penetration; increase dosing frequency"], answer: "Sulbactam is being degraded by AmpC; switch to meropenem-vaborbactam" },
+            { question: "A pharmaceutical company wants to develop a beta-lactam for treating intracellular pathogens. Which design principle would be most counterproductive?", options: ["Incorporating lipophilic side chains to enhance cellular uptake", "Adding hydrophilic groups to facilitate porin-mediated transport", "Designing a prodrug that activates intracellularly", "Creating a conjugate with a cell-penetrating peptide"], answer: "Adding hydrophilic groups to facilitate porin-mediated transport" },
+            { question: "A critically ill patient has a polymicrobial infection with both NDM-1 and OXA-48 producers. What combination strategy would provide the most rational coverage?", options: ["Ceftazidime-avibactam plus colistin", "Aztreonam plus ceftazidime-avibactam", "Tigecycline plus colistin", "High-dose ceftazidime-avibactam monotherapy"], answer: "Aztreonam plus ceftazidime-avibactam" },
+            { question: "Compare the mechanism by which penicillin V achieves acid stability versus the approach used in oxacillin. Why would combining these strategies be problematic?", options: ["Combination would create conflicting electronic effects", "Combination would impair PBP binding", "Combination would be redundant and reduce potency", "Combination would create an unstable intermediate"], answer: "Combination would create conflicting electronic effects" },
+            { question: "In what clinical scenario would the mechanistic difference between Avibactam and Vaborbactam be most clinically relevant?", options: ["When treating infections with high bacterial load", "When dealing with organisms that have multiple resistance mechanisms", "When treating biofilm infections", "When managing patients with renal dysfunction"], answer: "When treating infections with high bacterial load" },
+            { question: "Why doesn't simply increasing the dose of traditional cephalosporins achieve the same effect as Cefiderocol against drug-resistant organisms?", options: ["Cefiderocol bypasses efflux pumps through iron transport systems", "Cefiderocol has a different PBP binding profile", "The siderophore component provides additional antimicrobial activity", "Cefiderocol is more stable to beta-lactamases"], answer: "Cefiderocol bypasses efflux pumps through iron transport systems" },
+            { question: "Why do anti-staphylococcal penicillins show reduced activity against gram-negative bacteria compared to aminopenicillins?", options: ["The bulky side groups impair passage through porin channels", "Gram-negative bacteria have different PBP structures", "The electron-withdrawing groups reduce the reactivity of the beta-lactam ring", "They are more susceptible to gram-negative beta-lactamases"], answer: "The bulky side groups impair passage through porin channels" },
+            { question: "Why is the dual-role approach of Sulbactam-durlobactam advantageous for treating Acinetobacter infections?", options: ["Acinetobacter has unique PBPs targeted by sulbactam", "The dual mechanism reduces resistance development", "Durlobactam protects sulbactam from Acinetobacter's specific beta-lactamases", "The combination provides synergistic binding to multiple PBPs"], answer: "Durlobactam protects sulbactam from Acinetobacter's specific beta-lactamases" },
+            { question: "A novel beta-lactam is designed with a highly electronegative substituent at the alpha position. Predict the most likely impact.", options: ["Increased reactivity with PBPs but also increased susceptibility to acid hydrolysis", "Decreased PBP binding but improved stability to beta-lactamases", "Enhanced PBP acylation but may cause non-specific protein binding", "Improved beta-lactamase resistance but reduced PBP selectivity"], answer: "Enhanced PBP acylation but may cause non-specific protein binding" },
+            { question: "A new beta-lactamase inhibitor forms a stable covalent intermediate but shows reversible inhibition kinetics. Predict the structural feature responsible.", options: ["A leaving group that can be displaced after covalent bond formation", "A strained ring system that reopens after enzyme binding", "A hemiacetal intermediate that can undergo hydrolysis", "A reducible functional group that regenerates the free enzyme"], answer: "A strained ring system that reopens after enzyme binding" },
+            { question: "A beta-lactam is synthesized with a side chain containing a weak base (pKa ~7.5). Predict its behavior.", options: ["Enhanced activity in acidic infection sites", "Reduced activity in alkaline environments", "pH-dependent spectrum of activity with better gram-negative coverage at physiological pH", "Improved stability in gastric acid"], answer: "pH-dependent spectrum of activity with better gram-negative coverage at physiological pH" },
+            { question: "If a beta-lactam were modified to include a photolabile protecting group on the lactam nitrogen, what is the primary challenge?", options: ["The protected form would be inactive until light activation", "The modification would prevent the conformational arrangement for PBP binding", "Light activation would generate reactive species causing tissue damage", "The protecting group would interfere with beta-lactamase recognition"], answer: "The modification would prevent the conformational arrangement for PBP binding" },
+            { question: "A beta-lactam with a reversible covalent warhead is designed. Predict the most likely advantage and disadvantage.", options: ["Advantage: reduced toxicity; Disadvantage: decreased efficacy in hypoxic tissues", "Advantage: overcome PBP mutations; Disadvantage: increased susceptibility to beta-lactamases", "Advantage: improved pharmacokinetics; Disadvantage: rapid resistance development", "Advantage: selective activity; Disadvantage: complex manufacturing"], answer: "Advantage: reduced toxicity; Disadvantage: decreased efficacy in hypoxic tissues" },
+            { question: "You need to design a beta-lactam for chronic osteomyelitis by MRSA. Which combination of features is most appropriate?", options: ["Lipophilic side chain + bulky groups + pH-stable linker + slow-release", "Hydrophilic zwitterion + DBO inhibitor + acid-stable core + efflux pump inhibitor", "Bone-targeting bisphosphonate conjugate + anti-staphylococcal groups + biofilm-penetrating peptide", "Prodrug with bone-specific activation + clavulanic acid + extended half-life"], answer: "Bone-targeting bisphosphonate conjugate + anti-staphylococcal groups + biofilm-penetrating peptide" },
+            { question: "A biotech company wants to develop an oral beta-lactam to overcome both AmpC and KPC resistance. Which strategy is most feasible?", options: ["Create a prodrug of a carbapenem paired with a novel DBO inhibitor prodrug", "Design a monobactam with bulky side groups paired with an oral inhibitor", "Develop a cephalosporin with anti-AmpC modifications and an enteric-coated KPC inhibitor", "Engineer a penicillin with dual inhibitor activity in its side chain"], answer: "Create a prodrug of a carbapenem paired with a novel DBO inhibitor prodrug" },
+            { question: "For treating MDR Pseudomonas in cystic fibrosis patients, what is the most critical design consideration for a new beta-lactam?", options: ["Incorporating a siderophore for iron-mediated transport and resistance to beta-lactamases", "Adding anti-biofilm peptides to the structure", "Designing a liposomal formulation with sustained release", "Creating a combination with an anti-virulence compound"], answer: "Incorporating a siderophore for iron-mediated transport and resistance to beta-lactamases" },
+            { question: "You are designing a beta-lactam for immunocompromised patients that must be highly selective for bacterial PBPs. Which modification is most appropriate?", options: ["Incorporate a bacterial-specific recognition sequence", "Add a protective group removed only by bacterial enzymes", "Design a structure that exploits differences in active site architecture", "Create a prodrug requiring bacterial metabolism for activation"], answer: "Design a structure that exploits differences in active site architecture" },
+            { question: "For developing a beta-lactam against organisms with multiple carbapenemases, which design philosophy is most sustainable?", options: ["Create a 'superbug' antibiotic resistant to all known beta-lactamases", "Develop a combination with multiple inhibitors covering all enzyme classes", "Target a conserved step in cell wall synthesis downstream of transpeptidation", "Engineer a self-modifying antibiotic"], answer: "Develop a combination with multiple inhibitors covering all enzyme classes" },
+            { question: "The CDC classifies carbapenem-resistant Enterobacterales as 'urgent' and ESBL-producers as 'serious'. Why might this need revision in the next decade?", options: ["ESBL organisms are evolving to produce carbapenemases faster than new carbapenem alternatives are being developed", "The pipeline of anti-ESBL drugs is more robust, making them a lower priority", "Newer inhibitor combinations effectively address most carbapenemases", "ESBL infections are more common and cause greater overall morbidity"], answer: "ESBL organisms are evolving to produce carbapenemases faster than new carbapenem alternatives are being developed" },
+            { question: "Aztreonam-avibactam shows promise against MBL-producing organisms. What is the primary barrier to its development as a fixed combination?", options: ["Regulatory agencies require separate safety profiles for each component", "The combination has overlapping toxicity profiles", "Manufacturing challenges in creating a stable fixed-dose combination", "Limited market size for MBL-specific therapy makes development financially unviable"], answer: "Limited market size for MBL-specific therapy makes development financially unviable" },
+            { question: "Some experts argue that developing new beta-lactams is futile due to resistance. Evaluate this perspective.", options: ["The argument is valid because resistance development is faster than drug development", "The argument is flawed because new inhibitor mechanisms are outpacing resistance evolution", "The argument is partially correct but ignores combination therapies and non-traditional approaches", "The argument is incorrect because some beta-lactam mechanisms are biochemically impossible to overcome"], answer: "The argument is partially correct but ignores combination therapies and non-traditional approaches" },
+            { question: "Should the 'Trojan horse' antibiotic approach (e.g., cefiderocol) be prioritized over traditional beta-lactamase inhibitor development?", options: ["Yes, Trojan horse approaches circumvent existing resistance mechanisms entirely", "No, traditional inhibitor development is more cost-effective and faster", "Both approaches are complementary and should be pursued simultaneously", "Neither is optimal; focus should shift to new antibiotic classes"], answer: "Both approaches are complementary and should be pursued simultaneously" },
+            { question: "Recent beta-lactam developments focus on gram-negative pathogens. Is this research prioritization appropriate?", options: ["Yes, because gram-negative resistance mechanisms are more diverse and threatening", "No, because gram-positive infections cause more severe outcomes", "The focus should be balanced between both", "The focus is temporary and will shift back to gram-positive pathogens"], answer: "Yes, because gram-negative resistance mechanisms are more diverse and threatening" },
+            { question: "Which approach better reflects the evolution of modern drug design?", options: ["Screening 10,000 random compounds", "Designing 50 compounds based on the known structure of a biological target", "Both are equally valid", "Random screening, as it eliminates bias"], answer: "Designing 50 compounds based on the known structure of a biological target" },
+            { question: "A modern drug designer wants to combine the best aspects of historical drug discovery eras. Which strategy is most effective?", options: ["Use only synthetic methods but test in traditional medicine assays", "Screen natural product libraries using structure-based design and modern synthetic modifications", "Focus exclusively on historically successful digitalis and morphine derivatives", "Rely solely on computational drug design"], answer: "Screen natural product libraries using structure-based design and modern synthetic modifications" },
+            { question: "Team X uses random screening (0.5% hit rate). Team Y uses nonrandom screening (4% hit rate). What is a valid conclusion?", options: ["Team X's approach is superior due to fewer false positives", "Team Y's approach is more efficient, but may miss novel structural classes", "Both hit rates are too low to be meaningful", "Team X's approach is more reliable due to chemical diversity"], answer: "Team Y's approach is more efficient, but may miss novel structural classes" },
+            { question: "A metabolite of a failed diabetes drug shows anti-cancer activity. This exemplifies which principle?", options: ["Rational drug design using known receptor structures", "Exploitation of leads through pharmacokinetic studies of metabolites", "Random screening of synthetic molecules", "Nonrandom screening based on structural similarity"], answer: "Exploitation of leads through pharmacokinetic studies of metabolites" },
+            { question: "A drug's side effect of drowsiness leads to its investigation as a sleep aid. This is an example of:", options: ["Pharmacokinetic studies revealing active metabolites", "Pharmacodynamic studies identifying new applications from side effects", "Rational drug design based on receptor structure", "Exploitation of leads through chemical modification"], answer: "Pharmacodynamic studies identifying new applications from side effects" },
+            { question: "A startup with limited resources targets a well-characterized enzyme with a known crystal structure. Which approach is most appropriate?", options: ["Random screening of their small library", "Nonrandom screening using similar scaffolds", "Rational drug design using the enzyme structure to guide compound selection", "Natural product extraction and traditional medicine"], answer: "Rational drug design using the enzyme structure to guide compound selection" },
+            { question: "To mirror the historical development of aspirin from willow bark for a new medicinal plant, which sequence is best?", options: ["Extract → purify active compound → synthesize analogs → optimize via rational design", "Synthesize random analogs → screen → study mechanism → optimize", "Study traditional uses → extract → test randomly → abandon if not successful", "Use computational methods to predict active compounds → synthesize → test"], answer: "Extract → purify active compound → synthesize analogs → optimize via rational design" },
+            { question: "A computational team has no access to the 3D structure of a new viral protein target. Which CADD approach should they prioritize?", options: ["Molecular docking", "Homology modeling", "QSAR, because it only needs ligand structures", "Pharmacophore mapping"], answer: "QSAR, because it only needs ligand structures" },
+            { question: "Your lab has a library of 10 million molecules and a crystal structure of a target. What is the most efficient first step?", options: ["Manual visual inspection", "Wet lab enzyme assay of all compounds", "Virtual high-throughput screening", "Synthesize analogues randomly"], answer: "Virtual high-throughput screening" },
+            { question: "A team must design a new drug for a neglected tropical disease with few known targets. What bioinformatics step is crucial first?", options: ["Sequence similarity search of known drugs", "Identify new potential protein targets via genome mining", "Blindly dock random molecules", "Ignore target discovery and focus on side effects"], answer: "Identify new potential protein targets via genome mining" },
+            { question: "Given limited budget and an urgent need (e.g., Ebola outbreak), why might drug repurposing be favored over de novo design?", options: ["Repurposing is slower but cheaper", "Repurposing directly targets unknown proteins", "Repurposing has higher early success rates and shorter timelines", "Repurposing requires no computational tools"], answer: "Repurposing has higher early success rates and shorter timelines" },
+            { question: "A lead compound binds stably in a molecular dynamics simulation but fails experimentally. What’s a likely explanation?", options: ["Simulations guarantee real-world success", "MD can’t account for in vivo ADMET factors", "The lead compound must be mutated", "More CPU power would fix it"], answer: "MD can’t account for in vivo ADMET factors" },
+            { question: "Compare structure-based and ligand-based design: which uniquely requires the 3D structure of the target?", options: ["Both", "Only ligand-based design", "Only structure-based design", "Neither"], answer: "Only structure-based design" },
+            { question: "Why might virtual High-Throughput Screening (vHTS) outperform classical HTS in early discovery?", options: ["It avoids chemical synthesis entirely", "It guarantees bioavailability", "It saves reagents and time by screening in silico", "It replaces all lab tests"], answer: "It saves reagents and time by screening in silico" },
+            { question: "Between QSAR and molecular docking, which better explains 'how' a molecule binds to a target?", options: ["QSAR, as it models atomistic interactions", "Docking, as it predicts binding poses", "Both equally", "Neither"], answer: "Docking, as it predicts binding poses" },
+            { question: "A compound shows high predicted potency in QSAR but fails due to poor solubility. What property did QSAR fail to capture?", options: ["Shape complementarity", "ADME properties", "Binding free energy", "Number of heavy atoms"], answer: "ADME properties" },
+            { question: "Why might homology modeling results vary greatly between two proteins?", options: ["Protein charge always causes errors", "Quality of template alignment strongly affects accuracy", "Size of protein is irrelevant", "Any template always works"], answer: "Quality of template alignment strongly affects accuracy" },
+            { question: "If a drug candidate has LogD > 0 and MW > 400 Da, predict its likely clearance route.", options: ["Renal excretion unchanged", "Hepatic metabolism and biliary excretion", "Exhalation unchanged", "Excretion via sweat"], answer: "Hepatic metabolism and biliary excretion" },
+            { question: "A compound designed without considering hydrogen bond donors or acceptors often fails. Why?", options: ["These groups only add weight", "They are critical for receptor binding", "They reduce binding affinity", "Lipinski rule says fewer is always better"], answer: "They are critical for receptor binding" },
+            { question: "If molecular docking predicts a high binding affinity (low ΔG) but MD simulations show large fluctuations, what does this suggest?", options: ["Strong stable binding", "Likely unstable binding in vivo", "Experimental testing unnecessary", "Docking is always wrong"], answer: "Likely unstable binding in vivo" },
+            { question: "Predict why a candidate violating all Lipinski rules often shows low oral bioavailability.", options: ["Better stability", "Too large, too hydrophobic, poor permeability", "It must be more potent", "Rules are unrelated to bioavailability"], answer: "Too large, too hydrophobic, poor permeability" },
+            { question: "Docking predicts compound X binds near an enzyme's catalytic site. What effect is likely?", options: ["Enhances enzyme activity", "Inhibits enzyme function", "Makes no difference", "Changes enzyme’s gene sequence"], answer: "Inhibits enzyme function" },
+            { question: "You must design a new antimalarial but only know the Plasmodium genome. What combined approach could help?", options: ["QSAR + vHTS", "Homology modeling + docking + vHTS", "Random synthesis + NMR", "Only wet lab screening"], answer: "Homology modeling + docking + vHTS" },
+            { question: "Designing a GLP-1 analog to last longer in blood, what principle could you apply?", options: ["Decrease MW", "Increase renal clearance", "Fuse to albumin to reduce clearance", "Avoid proteins entirely"], answer: "Fuse to albumin to reduce clearance" },
+            { question: "Given limited computing, how would you screen 10M compounds quickly?", options: ["Test each by MD simulation", "Use fast vHTS, filter to top hits, then detailed docking", "Synthesize all directly", "Only do wet assays"], answer: "Use fast vHTS, filter to top hits, then detailed docking" },
+            { question: "Combining genomics and bioinformatics, how might you find new neglected disease drug targets?", options: ["Analyze parasite genome for essential, unique proteins", "Dock random ligands into host proteins", "Focus on highly mutable genes", "Use human proteins as targets"], answer: "Analyze parasite genome for essential, unique proteins" },
+            { question: "To predict oral bioavailability early, which tools or rules would you include?", options: ["Only molecular weight", "Only docking", "ADMET prediction + Lipinski rules", "Ignore until clinical trials"], answer: "ADMET prediction + Lipinski rules" },
+            { question: "Which CADD limitation can mislead early discovery?", options: ["It predicts exact patient efficacy", "Over-reliance on static models, ignoring dynamics", "It's too slow to test molecules", "It always finds toxic compounds"], answer: "Over-reliance on static models, ignoring dynamics" },
+            { question: "When would drug repurposing *fail* despite good computational scores?", options: ["If existing PK/PD is unsuitable for the new disease", "If the docking score is low", "It never fails if the score is good", "It always works for related diseases"], answer: "If existing PK/PD is unsuitable for the new disease" },
+            { question: "Why is combining CADD and experimental work essential?", options: ["CADD replaces all experiments", "Experiments validate and refine computational predictions", "Wet labs are obsolete", "Only computers matter in modern drug design"], answer: "Experiments validate and refine computational predictions" },
+            { question: "Which metric best explains why a molecule predicted as potent may still fail clinically?", options: ["Docking score only", "Binding free energy (ΔG) only", "ADMET properties like toxicity and metabolism", "Number of rotatable bonds alone"], answer: "ADMET properties like toxicity and metabolism" },
+            { question: "Why do docking scores not always correlate with potency?", options: ["Scoring functions are perfect representations of physics", "Docking ignores the cost of desolvating the ligand and protein", "Potency is only determined by the size of the molecule", "Higher scores always mean lower potency"], answer: "Docking ignores the cost of desolvating the ligand and protein" },
+            { question: "What is a major risk of overfitting in QSAR models?", options: ["The model will perform poorly on new, unseen compounds", "The model will be too simple to be useful", "The model will be too difficult to calculate", "The model will have perfect predictive power"], answer: "The model will perform poorly on new, unseen compounds" },
+            { question: "After discovering a novel bacterial enzyme, which combined CADD tools would you use to predict inhibitors quickly?", options: ["Homology modeling of the enzyme, followed by virtual screening/docking", "Running QSAR models without any known ligands", "Performing 100ns MD simulations on the unbound enzyme", "Only performing wet-lab HTS without any computational work"], answer: "Homology modeling of the enzyme, followed by virtual screening/docking" },
+            { question: "Compare molecular docking vs. MD simulations: which better captures dynamic ligand-receptor interactions?", options: ["Molecular docking, as it provides a static snapshot", "Molecular dynamics (MD), as it simulates movement over time", "Both are equally effective at capturing dynamics", "Neither can model dynamic interactions"], answer: "Molecular dynamics (MD), as it simulates movement over time" }
+        ];
+
+        // --- Game State ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 30;
+        let shuffledQuestions = [];
+        let countdownInterval;
+
+        // --- Functions ---
+
+        /**
+         * Shuffles an array in place using the Fisher-Yates algorithm.
+         * @param {Array} array The array to shuffle.
+         */
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        /**
+         * Initiates the countdown before the quiz starts.
+         */
+        function beginCountdown() {
+            startBtn.classList.add('hidden');
+            mainDescription.classList.add('hidden');
+            countdownDisplay.classList.remove('hidden');
+
+            let countdownValue = 3;
+            countdownDisplay.textContent = countdownValue;
+            countdownDisplay.classList.add('fade-in');
+
+            countdownInterval = setInterval(() => {
+                countdownValue--;
+                countdownDisplay.classList.remove('fade-in'); // Remove to re-trigger animation
+                void countdownDisplay.offsetWidth; // Trigger reflow
+                countdownDisplay.classList.add('fade-in');
+                
+                if (countdownValue > 0) {
+                    countdownDisplay.textContent = countdownValue;
+                } else if (countdownValue === 0) {
+                    countdownDisplay.textContent = "Go!";
+                } else {
+                    clearInterval(countdownInterval);
+                    startQuiz();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Starts the quiz.
+         */
+        function startQuiz() {
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            quizScreen.classList.add('fade-in');
+
+            // Reset state for new game
+            currentQuestionIndex = 0;
+            score = 0;
+            scoreDisplay.textContent = score;
+            shuffledQuestions = [...questions];
+            shuffleArray(shuffledQuestions);
+            
+            displayQuestion();
+        }
+
+        /**
+         * Displays the current question and options.
+         */
+        function displayQuestion() {
+            resetState();
+            
+            if (currentQuestionIndex >= shuffledQuestions.length) {
+                endQuiz();
+                return;
+            }
+
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            questionText.textContent = currentQuestion.question;
+            questionCounter.textContent = `${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
+            
+            // Update progress bar
+            progressBar.style.width = `${((currentQuestionIndex + 1) / shuffledQuestions.length) * 100}%`;
+
+            // Create and display option buttons
+            currentQuestion.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option-btn', 'w-full', 'p-4', 'text-left', 'bg-gray-200', 'dark:bg-gray-700', 'hover:bg-indigo-200', 'dark:hover:bg-indigo-900', 'rounded-lg', 'shadow-sm');
+                button.addEventListener('click', selectAnswer);
+                optionsContainer.appendChild(button);
+            });
+
+            startTimer();
+        }
+        
+        /**
+         * Starts the countdown timer for the current question.
+         */
+        function startTimer() {
+            timeLeft = 30;
+            timerDisplay.textContent = timeLeft;
+            timer = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Handles the case where the timer runs out.
+         */
+        function handleTimeout() {
+            optionsContainer.classList.add('disabled-options');
+            Array.from(optionsContainer.children).forEach(button => {
+                if (button.textContent === shuffledQuestions[currentQuestionIndex].answer) {
+                    button.classList.add('correct'); // Highlight correct answer
+                }
+            });
+            setTimeout(goToNextQuestion, 2000); // Wait 2 seconds before next question
+        }
+
+        /**
+         * Resets the state for the next question.
+         */
+        function resetState() {
+            clearInterval(timer);
+            optionsContainer.innerHTML = '';
+            optionsContainer.classList.remove('disabled-options');
+        }
+
+        /**
+         * Handles the user's answer selection.
+         * @param {Event} e The click event.
+         */
+        function selectAnswer(e) {
+            clearInterval(timer);
+            optionsContainer.classList.add('disabled-options');
+            const selectedButton = e.target;
+            const correct = selectedButton.textContent === shuffledQuestions[currentQuestionIndex].answer;
+
+            if (correct) {
+                score += 10;
+                scoreDisplay.textContent = score;
+                selectedButton.classList.add('correct');
+            } else {
+                selectedButton.classList.add('incorrect');
+                // Highlight the correct answer
+                Array.from(optionsContainer.children).forEach(button => {
+                    if (button.textContent === shuffledQuestions[currentQuestionIndex].answer) {
+                        button.classList.add('correct');
+                    }
+                });
+            }
+            
+            setTimeout(goToNextQuestion, 2000); // Wait 2 seconds before showing next question
+        }
+
+        /**
+         * Moves to the next question.
+         */
+        function goToNextQuestion() {
+            currentQuestionIndex++;
+            displayQuestion();
+        }
+
+        /**
+         * Ends the quiz and displays the final score.
+         */
+        function endQuiz() {
+            quizScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            endScreen.classList.add('fade-in');
+            finalScoreDisplay.textContent = score;
+
+            const percentage = (score / (shuffledQuestions.length * 10)) * 100;
+            let message = "";
+            if (percentage >= 80) {
+                message = "Excellent work! You're a pharmacology expert!";
+            } else if (percentage >= 50) {
+                message = "Good job! You have a solid understanding.";
+            } else {
+                message = "Keep studying! You'll get there.";
+            }
+            feedbackMessage.textContent = message;
+        }
+        
+        /**
+         * Resets the entire game to the start screen.
+         */
+        function restartGame() {
+            clearInterval(timer);
+            clearInterval(countdownInterval);
+            
+            endScreen.classList.add('hidden');
+            quizScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            startScreen.classList.add('fade-in');
+            
+            // Show the initial start screen elements
+            mainDescription.classList.remove('hidden');
+            startBtn.classList.remove('hidden');
+            countdownDisplay.classList.add('hidden');
+        }
+
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', beginCountdown);
+        restartBtn.addEventListener('click', restartGame);
+
+    </script>
+</body>
+</html>
